@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#ffd21e">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<title>Podo</title>
+<style>
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html, body { height:100%; }
+  body { background:#0d0b11; font-family:"Segoe UI","Malgun Gothic",sans-serif; color:#222; }
+  /* 실제 설치 시 전체화면. 데스크톱에선 가운데 폰 비율로 보기 좋게 */
+  .phone { position:relative; width:100%; max-width:520px; height:100%; margin:0 auto;
+    background:#0d0b11; overflow:hidden; display:flex; flex-direction:column; }
+  @media (min-width:560px){
+    body { display:flex; justify-content:center; padding:20px; }
+    .phone { height:92vh; max-height:880px; border-radius:36px; box-shadow:0 20px 50px rgba(0,0,0,.5); }
+  }
+  /* 유튜브 영화조명(앰비언트) — 초점 카드 색이 배경으로 번짐 */
+  .ambient { position:absolute; inset:-80px; z-index:0; filter:blur(85px) saturate(1.5);
+    opacity:.8; transform:scale(1.25); transition:opacity .6s ease; pointer-events:none; }
+  .topbar { position:relative; background:#ffd21e; padding:16px 18px; display:flex; align-items:center; gap:10px; flex:none; z-index:5; }
+  .logo { width:34px; height:34px; border-radius:9px; background:#141414; color:#ffd21e;
+    display:flex; align-items:center; justify-content:center; font-weight:900; font-size:20px; }
+  .topbar h1 { font-size:20px; font-weight:800; color:#141414; }
+
+  .scroll { position:relative; z-index:1; flex:1; overflow-y:auto; perspective:1600px;
+    perspective-origin:center 30%; padding:14px 0 240px; -webkit-overflow-scrolling:touch; }
+  .scroll::-webkit-scrollbar{ width:0; }
+  .seclabel { padding:8px 18px 8px; font-size:13px; font-weight:700; color:#e7e1f0;
+    text-shadow:0 1px 6px rgba(0,0,0,.5); }
+
+  .card { margin:0 11px 12px; border-radius:26px; background:#fff; overflow:hidden;
+    box-shadow:0 12px 28px rgba(0,0,0,.14); transform-origin:center center;
+    will-change:transform, opacity; backface-visibility:hidden; }
+  .card.lead { border:2px solid #ffd21e; }
+  .hero { position:relative; min-height:300px; padding:18px; color:#fff;
+    display:flex; flex-direction:column; justify-content:flex-end; }
+  .hero::before { content:""; position:absolute; inset:0;
+    background:linear-gradient(180deg, rgba(0,0,0,.03) 0%, rgba(0,0,0,.15) 42%, rgba(0,0,0,.75) 100%); }
+  .hero > * { position:relative; z-index:1; }
+  .emoji { position:absolute; inset:0; z-index:0; display:flex; align-items:center;
+    justify-content:center; font-size:66px; opacity:.9; }
+  .badge { position:absolute; top:14px; left:14px; z-index:2; background:#ffd21e; color:#141414;
+    font-weight:800; font-size:11.5px; padding:4px 10px; border-radius:999px; }
+  .ig { position:absolute; top:12px; right:12px; z-index:2;
+    width:40px; height:40px; border-radius:12px; display:flex; align-items:center; justify-content:center;
+    background:radial-gradient(circle at 30% 107%,#fdf497 0%,#fd5949 45%,#d6249f 60%,#285AEB 90%); }
+  .ig svg { width:23px; height:23px; }
+  .nm { font-size:21px; font-weight:800; text-shadow:0 1px 6px rgba(0,0,0,.5); }
+  .tag { font-size:13px; opacity:.95; margin-top:3px; text-shadow:0 1px 6px rgba(0,0,0,.5); }
+  .naver { margin-top:13px; display:flex; align-items:center; justify-content:center; gap:7px;
+    background:#03c75a; color:#fff; font-weight:700; font-size:15px; padding:13px; border-radius:13px;
+    box-shadow:0 6px 16px rgba(3,199,90,.4); text-decoration:none; }
+  .expand { padding:0 4px; }
+  .expbtn { width:100%; background:none; border:none; padding:13px 0; cursor:pointer;
+    font-size:13px; font-weight:700; color:#8a8296; display:flex; align-items:center; justify-content:center; gap:6px; }
+  .expbtn .arr { transition:transform .25s; }
+  .expbtn.open .arr { transform:rotate(180deg); }
+  .desc { max-height:0; overflow:hidden; transition:max-height .35s ease; }
+  .desc p { font-size:13px; line-height:1.7; color:#4a4452; padding:2px 16px 16px; white-space:pre-line; }
+</style>
+</head>
+<body>
+  <div class="phone">
+    <div class="ambient" id="ambient"></div>
+    <div class="topbar"><div class="logo">C</div><h1>Podo</h1></div>
+    <div class="scroll" id="scroll"></div>
+  </div>
+
+<script>
+const IG = `<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2">
+  <rect x="2" y="2" width="20" height="20" rx="6"/><circle cx="12" cy="12" r="5"/>
+  <circle cx="17.5" cy="6.5" r="1.3" fill="#fff" stroke="none"/></svg>`;
+
+const couture = { lead:true, name:"꾸뛰르", tag:"Couture Hair · 함께 성장하는 공간",
+  grad:"linear-gradient(135deg,#6a2347,#2a2430)", emoji:"💇", naver:"https://naver.me/GFCExG0l",
+  ig:"https://www.instagram.com/couture_luki", naverLabel:"📅 네이버 예약하기",
+  desc:"꾸뛰르는 단순한 헤어샵이 아니라, 손님과 함께 성장하는 공간입니다.\n\n정성스러운 시술은 물론, 가게를 운영하는 사장님 손님들을 함께 홍보하며 상생하는 문화를 만들어갑니다.\n\n당신의 아름다움과 비즈니스, Podo에서 함께 응원합니다. (※ 샘플 문구 — 실제 소개로 교체 예정)" };
+
+const shops = [
+  { name:"박종원 댄스아카데미", tag:"댄스 전문학원 · 입시/취미", grad:"linear-gradient(135deg,#6a2347,#b23a76)",
+    emoji:"💃", naver:"https://naver.me/GHYHSBW1", ig:"https://www.instagram.com/pjwdance_academy",
+    desc:"기초취미부터 전문 입시까지 탄탄한 라인업을 갖춘 대표 댄스 전문학원입니다.\n\n흔들리지않는 기본기와 독창적인 작품 구성을 목표하는 예술고, 대학합격의 문을 열어드립니다.\n\n또, 반복되는 일상에 지칠 때 기본 바운스부터 쉽고 재미있게 알려주는 힙합, 스트릿 취미클래스에서 땀 흘리고 스트레스까지 완벽하게 털어낼 수 있는 나를 위한 건강한 여유를 선물하는 공간입니다." },
+  { name:"소소한 네일", tag:"네일샵 · 젤네일/케어", grad:"linear-gradient(135deg,#c44569,#f8a5c2)",
+    emoji:"💅", naver:"#", ig:"#", desc:"작은 디테일까지 신경 쓰는 1:1 맞춤 네일. 손 건강을 생각한 케어와 트렌디한 아트를 함께 만나보세요." },
+  { name:"브루잉 커피로스터스", tag:"스페셜티 카페 · 원두 로스팅", grad:"linear-gradient(135deg,#6f4e37,#b08968)",
+    emoji:"☕", naver:"#", ig:"#", desc:"매일 직접 볶는 신선한 원두. 핸드드립부터 시그니처 라떼까지, 하루의 여유를 채우는 한 잔을 내려드립니다." },
+  { name:"오늘의 꽃", tag:"플라워샵 · 꽃다발/화분", grad:"linear-gradient(135deg,#2d6a4f,#74c69d)",
+    emoji:"💐", naver:"#", ig:"#", desc:"기념일부터 일상까지, 계절을 담은 꽃을 제안합니다. 당일 제작·배송으로 가장 싱싱한 꽃을 전해드려요." },
+  { name:"바른체형 필라테스", tag:"필라테스 · 1:1/그룹", grad:"linear-gradient(135deg,#1d3557,#457b9d)",
+    emoji:"🧘", naver:"#", ig:"#", desc:"체형 분석 기반의 맞춤 운동. 자세 교정과 코어 강화를 통해 통증 없는 몸을 함께 만들어갑니다." },
+  { name:"미미 속눈썹", tag:"속눈썹 연장 · 왁싱", grad:"linear-gradient(135deg,#7b2d5e,#d16ba5)",
+    emoji:"👁️", naver:"#", ig:"#", desc:"자연스러운 디자인부터 화려한 볼륨까지. 눈매에 꼭 맞는 속눈썹으로 또렷한 인상을 완성해드립니다." },
+];
+
+function cardHTML(s){
+  const badge = s.lead ? `<div class="badge">⭐ 대표</div>` : "";
+  const naverLabel = s.naverLabel || "📍 네이버에서 보기 / 예약";
+  const expand = s.desc ? `
+    <div class="expand">
+      <button class="expbtn" onclick="toggle(this)">소개 보기 <span class="arr">▾</span></button>
+      <div class="desc"><p>${s.desc}</p></div>
+    </div>` : "";
+  return `<div class="card ${s.lead?'lead':''}">
+    <div class="hero" style="background:${s.grad} center/cover;">
+      <div class="emoji">${s.emoji}</div>
+      ${badge}
+      <a class="ig" href="${s.ig}" target="_blank" title="인스타그램">${IG}</a>
+      <div class="nm">${s.name}</div>
+      <div class="tag">${s.tag}</div>
+      <a class="naver" href="${s.naver}" target="_blank">${naverLabel}</a>
+    </div>
+    ${expand}
+  </div>`;
+}
+
+const root = document.getElementById('scroll');
+const ambient = document.getElementById('ambient');
+root.innerHTML =
+  `<div class="seclabel">🍇 꾸뛰르</div>` + cardHTML(couture) +
+  `<div class="seclabel">🤝 함께하는 사장님들</div>` + shops.map(cardHTML).join('');
+
+// 카드 DOM 순서와 색상(그라데이션) 매핑
+const cards = [...root.querySelectorAll('.card')];
+const grads = [couture.grad, ...shops.map(s=>s.grad)];
+const cols = grads.map(g => g.match(/#[0-9a-fA-F]{6}/g));   // 카드별 [색1,색2]
+const hx = h => [parseInt(h.slice(1,3),16), parseInt(h.slice(3,5),16), parseInt(h.slice(5,7),16)];
+function mix(a, b, t){
+  const A = hx(a), B = hx(b), r = i => Math.round(A[i] + (B[i]-A[i])*t);
+  return `rgb(${r(0)},${r(1)},${r(2)})`;
+}
+// 스크롤 위치에 따라 인접 두 카드 색을 실시간 보간 → 사이사이 그라데이션
+function updateAmbient(focalY){
+  let i = 0;
+  while (i < centers.length-1 && centers[i+1] < focalY) i++;
+  const j = Math.min(i+1, cols.length-1);
+  let t = (i < centers.length-1) ? (focalY - centers[i]) / (centers[j] - centers[i]) : 0;
+  t = Math.max(0, Math.min(1, t));
+  const c1 = mix(cols[i][0], cols[j][0], t);
+  const c2 = mix(cols[i][1], cols[j][1], t);
+  ambient.style.background = `linear-gradient(165deg, ${c1}, ${c2})`;
+}
+
+function toggle(btn){
+  btn.classList.toggle('open');
+  const d = btn.nextElementSibling;
+  d.style.maxHeight = d.style.maxHeight ? '' : d.scrollHeight + 'px';
+  btn.firstChild.textContent = btn.classList.contains('open') ? '접기 ' : '소개 보기 ';
+  setTimeout(()=>{ measure(); coverflow(); }, 360);
+}
+
+/* === 커버플로우 (큰 반경, 부드럽게) + 앰비언트 조명 === */
+let centers = [], refLine = 0;
+const K = 0.08, MAX = 38;   // 첫 버전(처음) 각도 / K 작을수록 롤러 반경 큼
+
+function measure(){
+  const rr = root.getBoundingClientRect();
+  centers = cards.map(c=>{
+    const b = c.getBoundingClientRect();
+    return (b.top - rr.top) + root.scrollTop + b.height/2;
+  });
+  refLine = centers[0];       // 첫 카드(꾸뛰르)가 수평이 되는 초점선
+}
+
+function coverflow(){
+  const st = root.scrollTop;
+  for (let i=0;i<cards.length;i++){
+    const dy = (centers[i] - st) - refLine;
+    const ad = Math.abs(dy);
+    const rot = Math.max(-MAX, Math.min(MAX, -dy * K));
+    const scale = 1 - Math.min(ad * 0.00060, 0.30);
+    const op = 1 - Math.min(ad * 0.00120, 0.48);
+    cards[i].style.transform = `rotateX(${rot}deg) scale(${scale})`;
+    cards[i].style.opacity = op;
+  }
+  updateAmbient(st + refLine);
+}
+
+let ticking = false;
+root.addEventListener('scroll', ()=>{
+  if (!ticking){ ticking = true; requestAnimationFrame(()=>{ coverflow(); ticking = false; }); }
+}, { passive:true });
+window.addEventListener('resize', ()=>{ measure(); coverflow(); });
+
+measure();
+coverflow();
+
+// PWA: 서비스워커 등록 (설치/오프라인)
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js'));
+}
+</script>
+</body>
+</html>
