@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "io.github.huhnyi.podo",
+        "sha256_cert_fingerprints": ["4A:53:59:BE:EC:9F:F4:B1:2A:37:FF:52:28:A3:CC:19:F8:46:90:0C:BE:4C:BA:7C:0A:0F:78:AE:E3:CA:BE:8A"]
+      }
+    }]
